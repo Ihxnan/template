@@ -34,9 +34,9 @@ public:
             if (x >> i & 1)
             {
                 if (!basis[i])
-                { 
-                    basis[i] = x, ++sz; 
-                    return true; 
+                {
+                    basis[i] = x, ++sz;
+                    return true;
                 }
                 x ^= basis[i];
             }
