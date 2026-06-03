@@ -50,4 +50,4 @@ struct Comb
             return 0;
         return fac(x) * inv(x - y) % mod;
     }
-};
+} comb;

@@ -3,7 +3,7 @@ template <typename T> struct Fenwick
     int n;
     vector<T> tree;
 
-    Fenwick(int n = 0) : n(n), tree(n + 1) {}
+    Fenwick(int n) : n(n), tree(n + 1) {}
 
     void add(int x, const T &v)
     {

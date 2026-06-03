@@ -10,6 +10,11 @@ struct ST
         st.resize(len, vector<int>(n + 1));
     }
 
+    ST(vector<int> &arr, function<int(int, int)> Max = [](int a, int b) { return max(a, b); }) : n(arr.size() - 1), len(__lg(n) + 1), in(arr), Max(Max)
+    {
+        st.resize(len, vector<int>(n + 1));
+    }
+
     void init()
     {
         for (int i = 1; i <= n; ++i)
