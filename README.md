@@ -9,8 +9,8 @@ C++ header-only `.hpp` template library for competitive programming.
 |---|---|---|
 | `DataStructure/` | `DSU.hpp` `Fenwick.hpp` `SegmentTree.hpp` `ST.hpp` | Disjoint Set Union, Fenwick tree, segment tree, sparse table |
 | `Tree/` | `HLD.hpp` | Heavy-light decomposition (embedded segment tree) |
-| `Math/` | `Comb.hpp` `LinearBasis.hpp` | Combinatorics, linear basis |
-| `String/` | `Trie.hpp` | Trie |
+| `Math/` | `Comb.hpp` `EulerPrime.hpp` `IsPrime.hpp` `LinearBasis.hpp` | Combinatorics, Euler sieve, primality test, linear basis |
+| `String/` | `SequenceAM.hpp` `Trie.hpp` | Sequence automaton, trie |
 | `Random/` | `Generator.hpp` | Random graph / data generator |
 | `Debug/` | `dbg.hpp` | Debug print utilities |
 
