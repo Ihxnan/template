@@ -1,55 +1,570 @@
+// =============================================================================
+// dbg.hpp — 竞赛调试头文件
+//
+// ===== 使用样例 =====
+//
+// --- gdb：打印变量名和值，多变量逗号分隔单行 ---
+//   int n = 5, m = 10;
+//   gdb(n, m);              // [main.cpp:42]
+//                           // n = 5, m = 10
+//
+// --- 顺序容器 ---
+//   vector<int> v = {1, 2, 3};
+//   gdb(v);                 // [main.cpp:42]
+//                           // v = [1, 2, 3]
+//
+//   deque<int> dq = {7, 8, 9};
+//   gdb(dq);                // [main.cpp:42]
+//                           // dq = [7, 8, 9]
+//
+//   list<int> lst = {100, 200, 300};
+//   gdb(lst);               // [main.cpp:42]
+//                           // lst = [100, 200, 300]
+//
+//   array<int, 4> arr = {0, 1, 2, 3};
+//   gdb(arr);               // [main.cpp:42]
+//                           // arr = [0, 1, 2, 3]
+//
+// --- 关联容器 ---
+//   set<int> st = {3, 1, 4};
+//   gdb(st);                // [main.cpp:42]
+//                           // st = {1, 3, 4}
+//
+//   map<string, int> mp = {{"alice", 90}, {"bob", 85}};
+//   gdb(mp);                // [main.cpp:42]
+//                           // mp = {"alice": 90, "bob": 85}
+//
+// --- 容器适配器（自动拷贝后遍历）---
+//   stack<int> stk; stk.push(1); stk.push(2); stk.push(3);
+//   gdb(stk);               // [main.cpp:42]
+//                           // stk = [3, 2, 1]    (弹栈顺序)
+//
+//   queue<int> q; q.push(10); q.push(20); q.push(30);
+//   gdb(q);                 // [main.cpp:42]
+//                           // q = [10, 20, 30]   (FIFO)
+//
+//   priority_queue<int> pq; pq.push(5); pq.push(2); pq.push(8);
+//   gdb(pq);                // [main.cpp:42]
+//                           // pq = [8, 5, 2]      (优先级降序)
+//
+// --- 结构类型 ---
+//   pair<int, double> p = {42, 3.14};
+//   gdb(p);                 // [main.cpp:42]
+//                           // p = <42, 3.14>
+//
+//   tuple<int, char, string> t = {1, 'x', "hello"};
+//   gdb(t);                 // [main.cpp:42]
+//                           // t = (1, 'x', "hello")
+//
+//   optional<int> opt = 7, nopt = nullopt;
+//   gdb(opt, nopt);         // [main.cpp:42]
+//                           // opt = 7, nopt = nullopt
+//
+//   variant<int, string> var = "world";
+//   gdb(var);               // [main.cpp:42]
+//                           // var = "world"
+//
+//   bitset<8> bs(42);
+//   gdb(bs);                // [main.cpp:42]
+//                           // bs = 00101010
+//
+//   __int128_t big = (__int128_t)1e18 * 1e9;
+//   gdb(big);               // [main.cpp:42]
+//                           // big = 1000000000000000000000000000
+//
+// --- 嵌套容器（元素为容器时自动多行缩进）---
+//   vector<vector<int>> dp = {{1, 0}, {0, 1}};
+//   gdb(dp);                // [main.cpp:42]
+//                           // dp = 
+//                           //        0     1
+//                           //    0       1     0
+//                           //    1       0     1
+//
+//   vector<set<int>> vec_set = {{1, 2}, {3}};
+//   gdb(vec_set);           // [main.cpp:42]
+//                           // vec_set = [
+//                           //   {1, 2},
+//                           //   {3}
+//                           // ]
+//
+// --- gdbif：条件调试 ---
+//   gdbif(i > 100, i, arr[i]);     // 仅当 i > 100 时打印
+//
+// --- gdb_assert：调试断言（失败打印消息并 exit(1)）---
+//   gdb_assert(cnt > 0, "cnt must be positive but got " + to_string(cnt));
+//   // 失败输出:  [file:line] ASSERT FAILED [...msg...]
+//
+// --- TIME：RAII 计时器 ---
+//   { TIME("dp"); solve(); }   // 离开作用域打印耗时
+//   // 输出: [Timer] dp : 0.001234 s
+//
+//   TIME("sort"); sort(v.begin(), v.end());   // 单语句也适用
+//
+// --- dbg_print：直接调用打印引擎（不自动换行）---
+//   dbg_print(cerr, 42);              // 42
+//   dbg_print(cerr, vector{1,2});     // [1, 2]
+//   dbg_print(cerr, x); cerr << '\n'; // 手动换行
+//
+// ===== 输入代码示例 =====
+//   #ifdef IHXNAN
+//       #include <dbg>
+//   #else
+//       #define gdb(...)              ((void)0)
+//       #define gdbif(c, ...)         ((void)0)
+//       #define gdb_assert(cond, msg) ((void)0)
+//       #define TIME(name)          ((void)0)
+//       #define gc() (p1==p2&&(p2=(p1=buf)+fread(buf,1,S,stdin),p1==p2)?EOF:*p1++)
+//   #endif
+//
+// ===== 支持的容器/类型（自动适配）=====
+//   - pair, tuple, optional, variant
+//   - vector, deque, list, forward_list, array
+//   - set, multiset, unordered_set
+//   - map, multimap, unordered_map
+//   - stack, queue, priority_queue (自动拷贝后遍历)
+//   - bitset
+//   - __int128 / __uint128
+//   - 所有有 operator<< 的基础类型
+//   - 嵌套容器（元素为容器时自动多行缩进）
+// =============================================================================
+
+// ==================== 0. 头文件 & 常量 & 颜色 ====================
+#include <bits/stdc++.h>
+using namespace std;
+
+// 嵌套深度上限，超出打印 "..."
+#define MAX_DBG_DEPTH 10
+
+// 嵌套容器每层缩进空格数
+#define DBG_INDENT 2
+
+// ANSI 颜色码
+#define RED    "\033[1;31m"
+#define YELLOW "\033[1;33m"
+#define CYAN   "\033[1;36m"
+#define RESET  "\033[0m"
+
+// ==================== 1. __int128 打印 ====================
+
+// __int128 和 __uint128 是 GCC 扩展，无标准库 operator<<，
+// 这里手动实现十进制输出。
+ostream& operator<<(ostream& os, __int128_t x) {
+    if (x < 0) { os << '-'; x = -x; }
+    if (x > 9) os << x / 10;        // 递归调用自身，高位在前
+    return os << char('0' + x % 10);
+}
+ostream& operator<<(ostream& os, __uint128_t x) {
+    if (x > 9) os << x / 10;
+    return os << char('0' + x % 10);
+}
+
+// ==================== 2. 类型检测 ====================
+// 采用函数重载 + decltype 表达式 SFINAE，
+// 避免 void_t 在 GCC 16 类模板偏特化中的兼容性问题。
+
+// ---------------------------------------------------------------
+// is_specialization_of<T, Tmpl>：判断 T 是否为 Tmpl<Args...> 实例
+// ---------------------------------------------------------------
+template<typename, template<typename...> class>
+struct is_specialization_of : false_type {};
+template<template<typename...> class Tmpl, typename... Args>
+struct is_specialization_of<Tmpl<Args...>, Tmpl> : true_type {};
+
+// ---------------------------------------------------------------
+// is_specialization_of_nontype<T, Tmpl>：
+//     判断 T 是否为 Tmpl<nontype...> 实例（例如 bitset<N>）
+// ---------------------------------------------------------------
+template<typename, template<auto...> class>
+struct is_specialization_of_nontype : false_type {};
+template<template<auto...> class Tmpl, auto... Args>
+struct is_specialization_of_nontype<Tmpl<Args...>, Tmpl> : true_type {};
+
+// ---------------------------------------------------------------
+// 基于重载的表达式检测宏：生成 _trait(int) -> decltype(expr, true_type{})
+//                              _trait(long) -> false_type
+//                              trait_v = decltype(_trait<T>(0))::value
+// ---------------------------------------------------------------
+#define _DBG_DETECT(trait, ...)                                       \
+    template<typename T>                                              \
+    constexpr auto _dbg_##trait(int)                                  \
+        -> enable_if_t<true, decltype(__VA_ARGS__, true_type{})>     \
+    { return {}; }                                                   \
+    template<typename T>                                              \
+    constexpr false_type _dbg_##trait(long) { return {}; }            \
+    template<typename T>                                              \
+    constexpr bool trait##_v =                                        \
+        decltype(_dbg_##trait<T>(0))::value;
+
+// ---- 具体检测 ----
+_DBG_DETECT(has_begin,    declval<T>().begin())
+_DBG_DETECT(has_end,      declval<T>().end())
+_DBG_DETECT(has_pop,      declval<T>().pop())
+_DBG_DETECT(has_top,      declval<T>().top())
+_DBG_DETECT(has_front,    declval<T>().front())
+_DBG_DETECT(has_mapped,   typename T::mapped_type{})
+_DBG_DETECT(has_key,      typename T::key_type{})
+_DBG_DETECT(is_output,    declval<ostream&>() << declval<const T&>())
+
+#undef _DBG_DETECT
+
+// ---- 复合判断（在基础 _v 之上组合） ----
+template<typename T>
+constexpr bool is_pair_v     = is_specialization_of<T, pair>::value;
+template<typename T>
+constexpr bool is_tuple_v    = is_specialization_of<T, tuple>::value;
+template<typename T>
+constexpr bool is_optional_v = is_specialization_of<T, optional>::value;
+template<typename T>
+constexpr bool is_variant_v  = is_specialization_of<T, variant>::value;
+template<typename T>
+constexpr bool is_bitset_v   = is_specialization_of_nontype<T, bitset>::value;
+template<typename T>
+constexpr bool is_map_v      = has_mapped_v<T>;
+template<typename T>
+constexpr bool is_set_v      = has_key_v<T> && !is_map_v<T>;
+template<typename T>
+constexpr bool is_container_adaptor_v = has_pop_v<T> && !has_begin_v<T>;
+template<typename T>
+constexpr bool is_iterable_v = has_begin_v<T> && has_end_v<T>;
+template<typename T>
+constexpr bool is_streamable_v = is_output_v<T>;
+
+// is_structured_v：元素是否为结构体/容器，用于深度 0 时判断父容器是否需要多行缩进
+template<typename T>
+constexpr bool is_structured_v = is_iterable_v<T> || is_map_v<T> || is_set_v<T>
+    || is_container_adaptor_v<T> || is_pair_v<T> || is_tuple_v<T>
+    || is_optional_v<T> || is_variant_v<T> || is_bitset_v<T>;
+
+// is_expandable_v：深度 >=1 时，仅对"可展开"容器（有多元素的）继续多行，pair/tuple 等保持紧凑
+template<typename T>
+constexpr bool is_expandable_v = is_iterable_v<T> || is_map_v<T> || is_set_v<T>
+    || is_container_adaptor_v<T>;
+
+// ==================== 3. tuple 展开辅助 ====================
+
+// dbg_print 前向声明，供 _dbg_print_tuple 使用
+template<typename T>
+ostream& dbg_print(ostream& os, const T& x, int depth = 0);
+
+// 2D 网格打印的前向声明，供 dbg_print 内 vector<vector<T>> 自动路由使用
+template<typename T>
+void _dbg_print_grid(ostream& os, const vector<vector<T>>&, int, int, int, int);
+
+template<typename T>
+void _dbg_print_2d(ostream& os, const vector<vector<T>>& mat) {
+    int r = (int)mat.size();
+    int c = 0;
+    for (const auto& row : mat) c = max(c, (int)row.size());
+    _dbg_print_grid(os, mat, 0, r, 0, c);
+}
+
+// 递归 if constexpr 展开 tuple，避免 GCC 16 对折叠表达式内逗号运算符的限制。
+template<typename Tuple, size_t I = 0>
+void _dbg_print_tuple(ostream& os, const Tuple& t, int depth) {
+    if constexpr (I < tuple_size_v<Tuple>) {
+        if constexpr (I > 0) os << ", ";
+        dbg_print(os, get<I>(t), depth + 1);
+        _dbg_print_tuple<Tuple, I + 1>(os, t, depth);
+    }
+}
+
+// ==================== 4. 统一打印引擎 dbg_print ====================
+// 核心函数，通过 if constexpr 按优先级分发到对应分支。
+// depth 控制嵌套容器的缩进级别：
+//   depth = 0：紧凑输出（单行，元素逗号分隔）
+//   depth >= 1：换行 + 缩进输出
+// depth > MAX_DBG_DEPTH 直接打印 "..." 防无限递归。
+
+template<typename T>
+ostream& dbg_print(ostream& os, const T& x, int depth /* = 0 */) {
+    // 递归深度保护
+    if (depth > MAX_DBG_DEPTH) {
+        os << "...";
+        return os;
+    }
+
+    // ---- 0. 空指针 ----
+    if constexpr (is_same_v<T, nullptr_t>) {
+        os << "null";
+    }
+    // ---- 1. 字符串类型，用双引号包裹 ----
+    else if constexpr (is_same_v<T, string> || is_same_v<T, string_view>) {
+        os << '"' << x << '"';
+    }
+    else if constexpr (is_same_v<T, const char*> || is_same_v<T, char*>) {
+        os << '"' << x << '"';
+    }
+    else if constexpr (is_same_v<T, char>) {
+        os << '\'' << x << '\'';
+    }
+    // ---- 2. __int128 已重载 operator<< ----
+    else if constexpr (is_same_v<T, __int128_t> || is_same_v<T, __uint128_t>) {
+        os << x;
+    }
+    // ---- 3. pair ----
+    else if constexpr (is_pair_v<T>) {
+        os << '<';
+        dbg_print(os, x.first, depth + 1);
+        os << ", ";
+        dbg_print(os, x.second, depth + 1);
+        os << '>';
+    }
+    // ---- 4. tuple ----
+    else if constexpr (is_tuple_v<T>) {
+        os << '(';
+        _dbg_print_tuple(os, x, depth);
+        os << ')';
+    }
+    // ---- 5. optional ----
+    else if constexpr (is_optional_v<T>) {
+        if (x.has_value())
+            dbg_print(os, *x, depth);
+        else
+            os << "nullopt";
+    }
+    // ---- 6. variant ----
+    else if constexpr (is_variant_v<T>) {
+        std::visit([&](const auto& v) { dbg_print(os, v, depth); }, x);
+    }
+    // ---- 7. bitset ----
+    else if constexpr (is_bitset_v<T>) {
+        os << x.to_string();
+    }
+    // ---- 8. 容器适配器：stack / queue / priority_queue ----
+    //       拷贝一份后 pop 遍历，打印弹出顺序。
+    else if constexpr (is_container_adaptor_v<T>) {
+        auto cp = x;             // 拷贝，避免破坏原容器
+        bool fst = true;
+        os << '[';
+        while (!cp.empty()) {
+            if (!fst) os << ", ";
+            fst = false;
+            if constexpr (has_top_v<T>)
+                dbg_print(os, cp.top(), depth + 1);
+            else if constexpr (has_front_v<T>)
+                dbg_print(os, cp.front(), depth + 1);
+            cp.pop();
+        }
+        os << ']';
+    }
+    // ---- 9. map / multimap / unordered_map 系列 ----
+    else if constexpr (is_map_v<T>) {
+        bool fst = true;
+        bool multiline = (depth >= 1);
+        string indent(depth * DBG_INDENT, ' ');
+
+        os << '{';
+        for (const auto& [k, v] : x) {
+            if (!fst) os << (multiline ? "," : ", ");
+            fst = false;
+            if (multiline) os << '\n' << indent << string(DBG_INDENT, ' ');
+            dbg_print(os, k, depth + 1);
+            os << ": ";
+            dbg_print(os, v, depth + 1);
+        }
+        if (multiline) os << '\n' << indent;
+        os << '}';
+    }
+    // ---- 10. set / multiset / unordered_set 系列 ----
+    else if constexpr (is_set_v<T>) {
+        bool fst = true;
+        bool multiline = false;
+        if (!x.empty()) {
+            using Elem = decay_t<decltype(*x.begin())>;
+            if (depth == 0)
+                multiline = is_structured_v<Elem>;
+            else
+                multiline = is_expandable_v<Elem>;
+        }
+        string indent(depth * DBG_INDENT, ' ');
+
+        os << '{';
+        for (const auto& e : x) {
+            if (!fst) os << (multiline ? "," : ", ");
+            fst = false;
+            if (multiline) os << '\n' << indent << string(DBG_INDENT, ' ');
+            dbg_print(os, e, depth + 1);
+        }
+        if (multiline) os << '\n' << indent;
+        os << '}';
+    }
+    // ---- 11. 顺序容器：vector / deque / list / forward_list / array 等 ----
+    else if constexpr (is_iterable_v<T>) {
+        // vector<vector<U>>：当 U 为简单类型时自动网格格式，否则退回多行缩进
+        if (!x.empty()) {
+            using Elem = decay_t<decltype(*x.begin())>;
+            if constexpr (is_specialization_of<Elem, vector>::value) {
+                using Deep = decay_t<decltype(*declval<const Elem&>().begin())>;
+                if constexpr (!is_structured_v<Deep>) {
+                    os << '\n';
+                    _dbg_print_2d(os, x);
+                    return os;
+                }
+            }
+        }
+
+        bool fst = true;
+        bool multiline = false;
+        if (!x.empty()) {
+            using Elem = decay_t<decltype(*x.begin())>;
+            if (depth == 0)
+                multiline = is_structured_v<Elem>;
+            else
+                multiline = is_expandable_v<Elem>;
+        }
+        string indent(depth * DBG_INDENT, ' ');
+
+        os << '[';
+        for (const auto& e : x) {
+            if (!fst) os << (multiline ? "," : ", ");
+            fst = false;
+            if (multiline) os << '\n' << indent << string(DBG_INDENT, ' ');
+            dbg_print(os, e, depth + 1);
+        }
+        if (multiline) os << '\n' << indent;
+        os << ']';
+    }
+    // ---- 12. 基础类型：有 operator<< 的整数/浮点等 ----
+    else if constexpr (is_streamable_v<T>) {
+        os << x;
+    }
+    // ---- 13. 无法打印的类型 ----
+    else {
+        os << "[?]";
+    }
+    return os;
+}
+
+// ==================== 5. gdb 宏的名称解析 ====================
+// 从 #__VA_ARGS__ 逗号分隔串中提取下一个变量名，
+// 支持模板参数角括号 <>、括号 ()、中括号 [] 嵌套，避免模板变量名中的逗号误切。
+
+inline string _gdb_next_name(const char*& p) {
+    while (*p == ' ') ++p;
+    if (!*p) return "";
+    const char* beg = p;
+    int a = 0, r = 0, b = 0;               // angle, round, square bracket 深度
+    while (*p) {
+        if      (*p == '<') ++a;
+        else if (*p == '>') --a;
+        else if (*p == '(') ++r;
+        else if (*p == ')') --r;
+        else if (*p == '[') ++b;
+        else if (*p == ']') --b;
+        else if (*p == ',' && a == 0 && r == 0 && b == 0)
+            break;
+        ++p;
+    }
+    // 去掉末尾空格
+    const char* end = p;
+    while (end > beg && *(end - 1) == ' ') --end;
+    string name(beg, end);
+    if (*p == ',') ++p;
+    return name;
+}
+
+// ---------------------------------------------------------------
+// _gdb_all_vars：递归打印多个变量值（不使用前缀，只负责 name = value 部分）
+// 配合 gdb 宏使用，前缀 [file:line] 由宏统一输出一次。
+// ---------------------------------------------------------------
+
+// 递归基础（单变量，不加末尾逗号）
+template<typename T>
+void _gdb_all_vars(ostream& os, const char* names, const T& val) {
+    string name = _gdb_next_name(names);
+    os << RED << name << RESET << " = " << CYAN;
+    dbg_print(os, val, 0);
+    os << RESET;
+}
+
+// 递归步（多个变量，当前变量后面加逗号）
+template<typename T, typename... Args>
+void _gdb_all_vars(ostream& os, const char* names, const T& val, const Args&... rest) {
+    string name = _gdb_next_name(names);
+    os << RED << name << RESET << " = " << CYAN;
+    dbg_print(os, val, 0);
+    os << RESET << ", ";
+    _gdb_all_vars(os, names, rest...);
+}
+
+// ==================== 6. 调试宏 ====================
+
+/// 主调试宏：打印变量名和值
+/// 用法：gdb(n, m, v);
+/// 输出：
+///   [file:line]
+///   n = 5, m = 10, v = [1, 2, 3]
+#define gdb(...)                                                          \
+    do {                                                                  \
+        cerr << YELLOW "[" << __FILE__ << ":" << __LINE__ << "]\n" RESET; \
+        _gdb_all_vars(cerr, #__VA_ARGS__, __VA_ARGS__);                   \
+        cerr << '\n';                                                     \
+    } while (0)
+
+/// 条件 gdb，仅当 cond 为 true 时输出
+/// 用法：gdbif(i > 100, i, arr[i]);
+#define gdbif(cond, ...) if (cond) gdb(__VA_ARGS__)
+
+/// 断言宏：失败时打印诊断信息并退出
+/// 用法：gdb_assert(cnt > 0, "cnt must be positive but got " + to_string(cnt));
+#define gdb_assert(cond, msg)                                             \
+    do {                                                                  \
+        if (!(cond)) {                                                    \
+            cerr << RED "ASSERT FAILED [" << __FILE__ << ":"              \
+                 << __LINE__ << "] " << msg << RESET "\n";                \
+            exit(1);                                                      \
+        }                                                                 \
+    } while (0)
+
+// ==================== 7. 网格打印底层实现 ====================
+
+template<typename T>
+void _dbg_print_grid(ostream& os, const vector<vector<T>>& mat,
+                     int r1, int r2, int c1, int c2) {
+    // 列号标尺（红色高亮）
+    os << "        ";
+    for (int j = c1; j < c2; ++j)
+        os << RED << setw(6) << j << RESET;
+    os << '\n';
+
+    // 逐行打印
+    for (int i = r1; i < r2; ++i) {
+        os << "  " << RED << setw(4) << i << RESET << "  ";
+        for (int j = c1; j < c2; ++j) {
+            os << CYAN << setw(6);
+            dbg_print(os, mat[i][j]);
+        }
+        os << RESET << '\n';
+    }
+}
+
+// ==================== 8. Timer + TIME ====================
+
+/// RAII 计时器：构造时记录起始时间，析构时打印耗时（秒）
+/// 直接使用：{ Timer t("sort"); sort(v); }
+/// 宏方式：  TIME("sort"); sort(v);
+struct Timer {
+    using clock_t = chrono::high_resolution_clock;
+    clock_t::time_point start;
+    const char* name;
+
+    Timer(const char* _name) : start(clock_t::now()), name(_name) {}
+    ~Timer() {
+        double elapsed = chrono::duration<double>(clock_t::now() - start).count();
+        cerr << CYAN "[Timer] " << name << " : " << fixed << setprecision(6)
+             << elapsed << " s" RESET "\n";
+    }
+    Timer(const Timer&) = delete;
+    Timer& operator=(const Timer&) = delete;
+};
+
+/// TIME(name)：在作用域结束时自动打印耗时。
+/// 用法：
+///   { TIME("dp"); solve(); }
+///   TIME("sort"); sort(v.begin(), v.end());
+#define TIME(name) Timer _timer_##__LINE__(name)
+
+// ==================== 9. 兼容旧接口 ====================
+
+// gc: 快速读字符，保留旧接口。
 #define gc getchar
-#define gdb(...) _debug((char*)#__VA_ARGS__, __VA_ARGS__)
-
-template<typename T1, typename T2>
-ostream& operator<<(ostream& out, const pair<T1, T2>& obj)
-{
-    out << "<" << obj.first << ", " << obj.second << ">";
-    return out;
-}
-
-template<typename T>
-ostream& operator<<(ostream& out, const vector<T>& obj)
-{
-    out << "vector(";
-    for (auto it = obj.begin(); it != obj.end(); it++)
-        out << (it == obj.begin() ? "" : ", ") << *it;
-    out << ")";
-    return out;
-}
-
-template<typename T>
-ostream& operator<<(ostream& out, const set<T>& obj)
-{
-    out << "set(";
-    for (auto it = obj.begin(); it != obj.end(); it++)
-        out << "\n    " << *it;
-    out << "\n)";
-    return out;
-}
-
-template<typename T1, typename T2>
-ostream& operator<<(ostream& out, const map<T1, T2>& obj)
-{
-    out << "map(";
-    for (auto it = obj.begin(); it != obj.end(); it++)
-        out << "\n" << setw(5) << it->first << ": " << it->second;
-    out << "\n)";
-    return out;
-}
-
-template<typename T>
-void _debug(char* f, T t)
-{
-    cerr << "\033[1;31m" << f << " = " << t << "\033[0m\n";
-}
-
-template<typename T, typename... Ar>
-void _debug(char* f, T x, Ar... y)
-{
-    cerr << "\033[1;31m";
-    while (*f != ',') cerr << *f++;
-    cerr << " = " << x << ",";
-    _debug(f + 1, y...);
-    cerr << "\033[0m";
-}
