@@ -144,6 +144,12 @@ using namespace std;
 #define CYAN   "\033[1;36m"
 #define RESET  "\033[0m"
 
+inline bool _dbg_is_first() {
+    static bool first = true;
+    if (first) { first = false; return true; }
+    return false;
+}
+
 // ==================== 1. __int128 打印 ====================
 
 // __int128 和 __uint128 是 GCC 扩展，无标准库 operator<<，
@@ -496,6 +502,7 @@ void _gdb_all_vars(ostream& os, const char* names, const T& val, const Args&... 
 ///   n = 5, m = 10, v = [1, 2, 3]
 #define gdb(...)                                                          \
     do {                                                                  \
+        if (_dbg_is_first()) cerr << '\n';                                \
         cerr << YELLOW "[" << __FILE__ << ":" << __LINE__ << "]\n" RESET; \
         _gdb_all_vars(cerr, #__VA_ARGS__, __VA_ARGS__);                   \
         cerr << '\n';                                                     \
@@ -510,6 +517,7 @@ void _gdb_all_vars(ostream& os, const char* names, const T& val, const Args&... 
 #define gdb_assert(cond, msg)                                             \
     do {                                                                  \
         if (!(cond)) {                                                    \
+            if (_dbg_is_first()) cerr << '\n';                            \
             cerr << RED "ASSERT FAILED [" << __FILE__ << ":"              \
                  << __LINE__ << "] " << msg << RESET "\n";                \
             exit(1);                                                      \
@@ -551,6 +559,7 @@ struct Timer {
     Timer(const char* _name) : start(clock_t::now()), name(_name) {}
     ~Timer() {
         double elapsed = chrono::duration<double>(clock_t::now() - start).count();
+        if (_dbg_is_first()) cerr << '\n';
         cerr << CYAN "[Timer] " << name << " : " << fixed << setprecision(6)
              << elapsed << " s" RESET "\n";
     }
