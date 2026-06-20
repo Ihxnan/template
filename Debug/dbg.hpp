@@ -114,6 +114,8 @@
 //       #define gdb_assert(cond, msg) ((void)0)
 //       #define TIME(name)          ((void)0)
 //       #define gc() (p1==p2&&(p2=(p1=buf)+fread(buf,1,S,stdin),p1==p2)?EOF:*p1++)
+//       #define pc                   putchar
+//       #define dbg_putchar(c)        putchar(c)
 //   #endif
 //
 // ===== 支持的容器/类型（自动适配）=====
@@ -130,6 +132,7 @@
 
 // ==================== 0. 头文件 & 常量 & 颜色 ====================
 #include <bits/stdc++.h>
+#include <execinfo.h>
 using namespace std;
 
 // 嵌套深度上限，超出打印 "..."
@@ -144,10 +147,39 @@ using namespace std;
 #define CYAN   "\033[1;36m"
 #define RESET  "\033[0m"
 
-inline bool _dbg_is_first() {
-    static bool first = true;
-    if (first) { first = false; return true; }
-    return false;
+// ---- 运行时颜色开关 ----
+inline bool& _dbg_color_enabled() {
+    static bool en = true;
+    return en;
+}
+inline void dbg_set_color(bool on) { _dbg_color_enabled() = on; }
+
+// 颜色辅助：颜色开关关闭时返回空串
+inline const char* _dbg_c(const char* code) {
+    return _dbg_color_enabled() ? code : "";
+}
+
+// ---- 可重定向输出的 ostream 包装 ----
+inline FILE*& _dbg_out_fp() {
+    static FILE* fp = stdout;
+    return fp;
+}
+inline void dbg_set_output(FILE* fp) { _dbg_out_fp() = fp; }
+
+struct _dbg_streambuf : streambuf {
+    int overflow(int c) override {
+        if (c != EOF) return fputc(c, _dbg_out_fp());
+        return EOF;
+    }
+    streamsize xsputn(const char* s, streamsize n) override {
+        return fwrite(s, 1, n, _dbg_out_fp());
+    }
+};
+
+inline ostream& _dbg_os() {
+    static _dbg_streambuf buf;
+    static ostream os(&buf);
+    return os;
 }
 
 // ==================== 1. __int128 打印 ====================
@@ -162,6 +194,19 @@ ostream& operator<<(ostream& os, __int128_t x) {
 ostream& operator<<(ostream& os, __uint128_t x) {
     if (x > 9) os << x / 10;
     return os << char('0' + x % 10);
+}
+
+// ==================== 1b. dbg_binary — 整数二进制打印 ====================
+
+template<typename T>
+enable_if_t<is_integral_v<T>>
+dbg_binary(ostream& os, T val) {
+    os << "0b";
+    for (int i = 8 * (int)sizeof(T) - 1; i >= 0; --i) {
+        if (i < 8 * (int)sizeof(T) - 1 && (i + 1) % 4 == 0)
+            os << '_';
+        os << char('0' + ((val >> i) & 1));
+    }
 }
 
 // ==================== 2. 类型检测 ====================
@@ -478,18 +523,18 @@ inline string _gdb_next_name(const char*& p) {
 template<typename T>
 void _gdb_all_vars(ostream& os, const char* names, const T& val) {
     string name = _gdb_next_name(names);
-    os << RED << name << RESET << " = " << CYAN;
+    os << _dbg_c(RED) << name << _dbg_c(RESET) << " = " << _dbg_c(CYAN);
     dbg_print(os, val, 0);
-    os << RESET;
+    os << _dbg_c(RESET);
 }
 
 // 递归步（多个变量，当前变量后面加逗号）
 template<typename T, typename... Args>
 void _gdb_all_vars(ostream& os, const char* names, const T& val, const Args&... rest) {
     string name = _gdb_next_name(names);
-    os << RED << name << RESET << " = " << CYAN;
+    os << _dbg_c(RED) << name << _dbg_c(RESET) << " = " << _dbg_c(CYAN);
     dbg_print(os, val, 0);
-    os << RESET << ", ";
+    os << _dbg_c(RESET) << ", ";
     _gdb_all_vars(os, names, rest...);
 }
 
@@ -501,48 +546,82 @@ void _gdb_all_vars(ostream& os, const char* names, const T& val, const Args&... 
 ///   [file:line]
 ///   n = 5, m = 10, v = [1, 2, 3]
 #define gdb(...)                                                          \
-    do {                                                                  \
-        if (_dbg_is_first()) cerr << '\n';                                \
-        cerr << YELLOW "[" << __FILE__ << ":" << __LINE__ << "]\n" RESET; \
-        _gdb_all_vars(cerr, #__VA_ARGS__, __VA_ARGS__);                   \
-        cerr << '\n';                                                     \
-    } while (0)
+    (fflush(stdout),                                                      \
+     _dbg_os() << _dbg_c(YELLOW) << "[" << __FILE__ << ":" << __LINE__ << "]\n" \
+          << _dbg_c(RESET),                                               \
+     _gdb_all_vars(_dbg_os(), #__VA_ARGS__, __VA_ARGS__),                \
+     _dbg_os() << '\n',                                                   \
+     fflush(_dbg_out_fp()),                                               \
+     0)
 
 /// 条件 gdb，仅当 cond 为 true 时输出
 /// 用法：gdbif(i > 100, i, arr[i]);
-#define gdbif(cond, ...) if (cond) gdb(__VA_ARGS__)
+#define gdbif(cond, ...) ((cond) ? (gdb(__VA_ARGS__)) : (0))
 
 /// 断言宏：失败时打印诊断信息并退出
 /// 用法：gdb_assert(cnt > 0, "cnt must be positive but got " + to_string(cnt));
 #define gdb_assert(cond, msg)                                             \
-    do {                                                                  \
-        if (!(cond)) {                                                    \
-            if (_dbg_is_first()) cerr << '\n';                            \
-            cerr << RED "ASSERT FAILED [" << __FILE__ << ":"              \
-                 << __LINE__ << "] " << msg << RESET "\n";                \
-            exit(1);                                                      \
-        }                                                                 \
-    } while (0)
+    ((void)((cond) || (                                                   \
+        fflush(stdout),                                                   \
+        _dbg_os() << _dbg_c(RED) << "ASSERT FAILED [" << __FILE__ << ":" \
+             << __LINE__ << "] " << msg << _dbg_c(RESET) << "\n",        \
+        fflush(_dbg_out_fp()),                                            \
+        exit(1),                                                          \
+        0)))
+
+// ==================== 6b. DbgStream — 流式临时调试（无需变量名）====================
+
+/// 用法：
+///   DbgStream() << "partial = " << (a + b) * c;
+///   // [main.cpp:42]
+///   // partial = 42
+struct DbgStream {
+    source_location loc;
+    DbgStream(source_location l = source_location::current()) : loc(l) {
+        fflush(stdout);
+        _dbg_os() << _dbg_c(YELLOW) << "[" << loc.file_name() << ":" << loc.line() << "]\n"
+             << _dbg_c(RESET);
+    }
+    ~DbgStream() { _dbg_os() << '\n'; fflush(_dbg_out_fp()); }
+    template<typename T>
+    DbgStream& operator<<(const T& v) {
+        dbg_print(_dbg_os(), v, 0);
+        return *this;
+    }
+    DbgStream(const DbgStream&) = delete;
+    DbgStream& operator=(const DbgStream&) = delete;
+};
 
 // ==================== 7. 网格打印底层实现 ====================
 
 template<typename T>
 void _dbg_print_grid(ostream& os, const vector<vector<T>>& mat,
                      int r1, int r2, int c1, int c2) {
+    // 第一遍：扫描所有元素，计算最大显示宽度
+    int w = 1;
+    for (int i = r1; i < r2; ++i)
+        for (int j = c1; j < c2; ++j) {
+            ostringstream ss;
+            dbg_print(ss, mat[i][j]);
+            w = max(w, (int)ss.str().size() + 1);
+        }
+    int rw = max(2, (int)to_string(r2 - 1).size());  // 行号宽度
+    string indent(rw + 4, ' ');                      // 列号标尺前的缩进
+
     // 列号标尺（红色高亮）
-    os << "        ";
+    os << indent;
     for (int j = c1; j < c2; ++j)
-        os << RED << setw(6) << j << RESET;
+        os << _dbg_c(RED) << setw(w) << j << _dbg_c(RESET);
     os << '\n';
 
     // 逐行打印
     for (int i = r1; i < r2; ++i) {
-        os << "  " << RED << setw(4) << i << RESET << "  ";
+        os << "  " << _dbg_c(RED) << setw(rw) << i << _dbg_c(RESET) << "  ";
         for (int j = c1; j < c2; ++j) {
-            os << CYAN << setw(6);
+            os << _dbg_c(CYAN) << setw(w);
             dbg_print(os, mat[i][j]);
         }
-        os << RESET << '\n';
+        os << _dbg_c(RESET) << '\n';
     }
 }
 
@@ -559,9 +638,10 @@ struct Timer {
     Timer(const char* _name) : start(clock_t::now()), name(_name) {}
     ~Timer() {
         double elapsed = chrono::duration<double>(clock_t::now() - start).count();
-        if (_dbg_is_first()) cerr << '\n';
-        cerr << CYAN "[Timer] " << name << " : " << fixed << setprecision(6)
-             << elapsed << " s" RESET "\n";
+        fflush(stdout);
+        _dbg_os() << _dbg_c(CYAN) << "[Timer] " << name << " : " << fixed << setprecision(6)
+             << elapsed << " s" << _dbg_c(RESET) << "\n";
+        fflush(_dbg_out_fp());
     }
     Timer(const Timer&) = delete;
     Timer& operator=(const Timer&) = delete;
@@ -573,7 +653,95 @@ struct Timer {
 ///   TIME("sort"); sort(v.begin(), v.end());
 #define TIME(name) Timer _timer_##__LINE__(name)
 
+// ==================== 8b. Bench — 多轮计时统计 ====================
+
+/// 用法：
+///   Bench b("quick_vs_merge");
+///   for (int t = 0; t < 10; ++t) {
+///       auto data = gen_data(1e6);
+///       b.start(); quick_sort(data); b.stop();
+///       b.start(); merge_sort(data); b.stop();
+///   }
+///   // 析构输出: [Bench] quick_vs_merge : 20 runs, avg 0.0123 s, min ...
+struct Bench {
+    using clock_t = chrono::high_resolution_clock;
+    const char* name;
+    vector<double> samples;
+
+    Bench(const char* n) : name(n) {}
+    void start() { samples.push_back(-(double)clock_t::now().time_since_epoch().count()); }
+    void stop()  { samples.back() += (double)clock_t::now().time_since_epoch().count(); }
+    ~Bench() {
+        if (samples.empty()) return;
+        double sum = 0, mn = samples[0], mx = samples[0];
+        for (auto s : samples) { sum += s; if (s < mn) mn = s; if (s > mx) mx = s; }
+        double avg = sum / samples.size();
+        fflush(stdout);
+        _dbg_os() << _dbg_c(CYAN) << "[Bench] " << name << " : " << samples.size()
+             << " runs, avg " << fixed << setprecision(6) << avg / 1e9
+             << " s, min " << mn / 1e9 << " s, max " << mx / 1e9 << " s"
+             << _dbg_c(RESET) << "\n";
+        fflush(_dbg_out_fp());
+    }
+    Bench(const Bench&) = delete;
+    Bench& operator=(const Bench&) = delete;
+};
+
+// ==================== 8c. dbg_backtrace — 崩溃信号处理器 ====================
+
+/// 在 main 开头调用一次，遇到 SIGSEGV / SIGABRT / SIGFPE 时打印调用栈。
+/// 编译需要 -g -rdynamic 以获得函数名。
+/// 用法：
+///   int main() {
+///       dbg_register_signal_handlers();
+///       // ... 你的代码
+///   }
+inline void _dbg_signal_handler(int sig) {
+    const char* name = "";
+    if (sig == SIGSEGV) name = "SIGSEGV";
+    else if (sig == SIGABRT) name = "SIGABRT";
+    else if (sig == SIGFPE)  name = "SIGFPE";
+    else                     name = "SIG???";
+
+    fflush(stdout);
+    fputs(_dbg_c(RED), _dbg_out_fp());
+    fputs("\n[CRASH] Caught ", _dbg_out_fp());
+    fputs(name, _dbg_out_fp());
+    fputs(_dbg_c(RESET), _dbg_out_fp());
+    fputs("\n", _dbg_out_fp());
+    fflush(_dbg_out_fp());
+    void* buffer[64];
+    int n = backtrace(buffer, 64);
+    backtrace_symbols_fd(buffer, n, STDERR_FILENO);
+    _exit(1);
+}
+
+inline void dbg_register_signal_handlers() {
+    signal(SIGSEGV, _dbg_signal_handler);
+    signal(SIGABRT, _dbg_signal_handler);
+    signal(SIGFPE,  _dbg_signal_handler);
+}
+
+// ==================== 8d. dbg_putchar — putchar 包装（固定紫色）====================
+
+/// 给通过 putchar 输出的内容加上紫色前缀，与 gdb 的彩色输出区分。
+/// 用法：在模板中将 `#define pc putchar` 改为 `#define pc dbg_putchar`
+///       non-debug 分支加 `#define dbg_putchar(c) putchar(c)`
+inline void dbg_putchar(int c) {
+    static bool _dbg_pc_init = false;
+    if (!_dbg_pc_init) {
+        _dbg_pc_init = true;
+        atexit([] { fputs("\033[0m", stdout); });
+    }
+    if (_dbg_color_enabled()) fputs("\033[35m", stdout);
+    putchar(c);
+    if (c == '\n' && _dbg_color_enabled()) fputs("\033[0m", stdout);
+}
+
 // ==================== 9. 兼容旧接口 ====================
 
 // gc: 快速读字符，保留旧接口。
 #define gc getchar
+
+// pc: putchar 包装，固定紫色输出（配合 gdb 区分）
+#define pc dbg_putchar

@@ -15,6 +15,7 @@
     #define gdb_assert(cond, msg) ((void)0)
     #define TIME(name)            ((void)0)
     #define gc() (p1==p2&&(p2=(p1=buf)+fread(buf,1,S,stdin),p1==p2)?EOF:*p1++)
+    #define pc(c) (Top==S&&(clear(),0), buf[Top++]=c)
 #endif
 using namespace std;using ll = long long;using ul = unsigned long long;using lll = __int128;using vb = vector<bool>;using vi = vector<int>;using vvi = vector<vi>;using vl = vector<ll>;using vvl = vector<vl>;using pii = pair<int, int>;using pll = pair<ll, ll>;using ti = tuple<int, int, int>;
 struct IO{
@@ -24,7 +25,6 @@ struct IO{
     uint8_t buf[S],*p1,*p2;int st[105],Top;
     ~IO(){clear();}
     inline void clear(){fwrite(buf,1,Top,stdout);Top=0;}
-    inline void pc(uint8_t c){Top==S&&(clear(),0);buf[Top++]=c;}
     inline IO&operator>>(char&x){while(isspace(x=gc()));return *this;}
     inline IO&operator>>(string&x){x.clear();int c;while(isspace(c=gc()));while(!isspace(c))x+=char(c),c=gc();return*this;}
     template<typename T>inline IO&operator>>(T&x){x=0;int f=0,ch=gc();while(!isdigit(ch)){if(ch=='-')f^=1;ch=gc();}while(isdigit(ch))x=(x<<3)+(x<<1)+(ch^48),ch=gc();f?x=-x:0;return*this;}
