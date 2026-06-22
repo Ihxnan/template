@@ -606,7 +606,7 @@ void _dbg_print_grid(ostream& os, const vector<vector<T>>& mat,
             w = max(w, (int)ss.str().size() + 1);
         }
     int rw = max(2, (int)to_string(r2 - 1).size());  // 行号宽度
-    string indent(rw + 4, ' ');                      // 列号标尺前的缩进
+    string indent(rw, ' ');                        // 列号标尺前的缩进
 
     // 列号标尺（红色高亮）
     os << indent;
@@ -616,7 +616,7 @@ void _dbg_print_grid(ostream& os, const vector<vector<T>>& mat,
 
     // 逐行打印
     for (int i = r1; i < r2; ++i) {
-        os << "  " << _dbg_c(RED) << setw(rw) << i << _dbg_c(RESET) << "  ";
+        os << _dbg_c(RED) << setw(rw) << i << _dbg_c(RESET);
         for (int j = c1; j < c2; ++j) {
             os << _dbg_c(CYAN) << setw(w);
             dbg_print(os, mat[i][j]);

@@ -35,17 +35,15 @@ struct IO{
 }fin,fout;
 int iINF = 0x3f3f3f3f, mod = 998244353;ll lINF = 0x3f3f3f3f3f3f3f3f, MOD = 1000000007;
 
-void solve()
-{
-    
-}
+void solve();
 
 int main()
 {
     int t = 1;
-    scanf("%d", &t);
+#ifdef MULTIT
+        scanf("%d", &t);
+#endif
     while (t--)
         solve();
     return 0;
 }
-
