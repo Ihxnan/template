@@ -3,8 +3,14 @@ struct SqAM
     int n;
     vector<vector<int>> next;
     SqAM() = default;
-    SqAM(const string &str) { init(str); }
-    void clear() { n = 0, next.clear(); }
+    SqAM(const string &str)
+    {
+        init(str);
+    }
+    void clear()
+    {
+        n = 0, next.clear();
+    }
     void init(const string &str)
     {
         n = str.size();

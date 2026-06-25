@@ -4,7 +4,9 @@ template <class T> struct SegmentTree
     vector<T> in;
     vector<T> tree, tag;
 
-    SegmentTree(int n) : n(n), in(n + 1), tree(4 * n), tag(4 * n) {}
+    SegmentTree(int n) : n(n), in(n + 1), tree(4 * n), tag(4 * n)
+    {
+    }
 
     SegmentTree(vector<T> &arr) : n(arr.size() - 1), in(arr), tree(4 * n), tag(4 * n)
     {

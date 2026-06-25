@@ -12,9 +12,10 @@ class Generator
 {
     mt19937_64 gen;
 
-public:
-
-    Generator() : gen(chrono::steady_clock::now().time_since_epoch().count()) {}
+  public:
+    Generator() : gen(chrono::steady_clock::now().time_since_epoch().count())
+    {
+    }
 
     ll rd(ll l, ll r)
     {
@@ -28,9 +29,7 @@ public:
             if (!num)
                 s += 'a' + rd(0, 25);
             else
-                s += rd(0, 1) ? 'a' + rd(0, 25) : 
-                     rd(0, 1) ? 'A' + rd(0, 25) :
-                     '0' + rd(0, 9);
+                s += rd(0, 1) ? 'a' + rd(0, 25) : rd(0, 1) ? 'A' + rd(0, 25) : '0' + rd(0, 9);
         cout << s << endl;
     }
 
@@ -60,7 +59,8 @@ public:
         set<pair<int, int>> uni;
         if (root == -1)
             root = rd(0, n - 1);
-        for (auto [x, y] : tmp) {
+        for (auto [x, y] : tmp)
+        {
             x = (x + root) % n + 1;
             y = (y + root) % n + 1;
             edge.emplace_back(x, y);
@@ -68,7 +68,8 @@ public:
         }
         int add = m - (n - 1);
         for (int i = 0; i < add; i++)
-            while (true) {
+            while (true)
+            {
                 int x = rd(1, n), y = rd(1, n);
                 if (x == y || uni.count({x, y}) || uni.count({y, x}))
                     continue;

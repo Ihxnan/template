@@ -4,7 +4,9 @@ template <class T> struct SegmentTree
     vector<T> in;
     vector<T> tree, tag;
 
-    SegmentTree(int n) : n(n), in(n + 1), tree(4 * n), tag(4 * n) {}
+    SegmentTree(int n) : n(n), in(n + 1), tree(4 * n), tag(4 * n)
+    {
+    }
 
     SegmentTree(vector<T> &arr) : n(arr.size() - 1), in(arr), tree(4 * n), tag(4 * n)
     {
@@ -92,7 +94,8 @@ template <class T> struct SegmentTree
     }
 };
 
-template <class T> struct HLD {
+template <class T> struct HLD
+{
     int n, dn;
     vector<T> in;
     vector<vector<int>> tree;
@@ -101,12 +104,11 @@ template <class T> struct HLD {
     vector<T> rk;
     SegmentTree<T> segtree;
 
-    HLD(int n) : n(n), dn(0),
-                 in(n + 1),
-                 tree(n + 1),
-                 sz(n + 1), dep(n + 1), son(n + 1), parent(n + 1),
-                 top(n + 1), dfn(n + 1), segtree(n),
-                 rk(n + 1) {}
+    HLD(int n)
+        : n(n), dn(0), in(n + 1), tree(n + 1), sz(n + 1), dep(n + 1), son(n + 1), parent(n + 1), top(n + 1), dfn(n + 1),
+          segtree(n), rk(n + 1)
+    {
+    }
 
     void add(int u, int v)
     {
@@ -196,4 +198,3 @@ template <class T> struct HLD {
         segtree.build();
     }
 };
-

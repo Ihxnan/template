@@ -5,9 +5,18 @@ struct Comb
     ll mod;
     vector<ll> _fac, _inv;
 
-    Comb(ll mod) : n(0), mod(mod), _fac{1}, _inv{0} {}
+    Comb(ll mod) : n(0), mod(mod), _fac{1}, _inv{0}
+    {
+    }
 
-    ll qmi(ll a, ll b) { ll ans = 1; for (; b; b >>= 1, a = a * a % mod) if (b & 1) ans = ans * a % mod; return ans; }
+    ll qmi(ll a, ll b)
+    {
+        ll ans = 1;
+        for (; b; b >>= 1, a = a * a % mod)
+            if (b & 1)
+                ans = ans * a % mod;
+        return ans;
+    }
 
     void init(int m)
     {

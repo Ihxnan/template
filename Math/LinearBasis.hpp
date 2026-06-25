@@ -6,7 +6,8 @@ template <typename T> class LinearBasis
     vector<T> basis;
     vector<T> standard;
 
-    void rebuild() {
+    void rebuild()
+    {
         for (int i = BITS - 1; i >= 0; i--)
             for (int j = i - 1; j >= 0; j--)
                 if (basis[i] >> j & 1)
@@ -18,8 +19,10 @@ template <typename T> class LinearBasis
                 standard.push_back(basis[i]);
     }
 
-public:
-    LinearBasis() : sz(0), zero(false), basis(BITS, T(0)) {}
+  public:
+    LinearBasis() : sz(0), zero(false), basis(BITS, T(0))
+    {
+    }
 
     void clear()
     {
@@ -29,7 +32,8 @@ public:
         standard.clear();
     }
 
-    bool insert(T x) {
+    bool insert(T x)
+    {
         for (int i = BITS - 1; i >= 0; i--)
             if (x >> i & 1)
             {
@@ -59,7 +63,7 @@ public:
     T max()
     {
         T res = 0;
-        for(int i = BITS - 1; i >= 0; --i)
+        for (int i = BITS - 1; i >= 0; --i)
             res = std::max(res, res ^ basis[i]);
         return res;
     }
@@ -72,7 +76,10 @@ public:
         return 0;
     }
 
-    int size() { return sz; }
+    int size()
+    {
+        return sz;
+    }
 
     T kth(T k)
     {

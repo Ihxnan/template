@@ -1,4 +1,5 @@
-struct Trie {
+struct Trie
+{
     int tot;
     vector<int> pass, end;
     vector<vector<int>> trie;
@@ -12,7 +13,9 @@ struct Trie {
         return x - '0' + 52;
     }
 
-    Trie(int n) : tot(0), pass(n + 5), end(n + 5), trie(n + 5, vector<int>(62)) {}
+    Trie(int n) : tot(0), pass(n + 5), end(n + 5), trie(n + 5, vector<int>(62))
+    {
+    }
 
     void insert(const string &str)
     {
@@ -85,4 +88,3 @@ struct Trie {
         tot = 0;
     }
 };
-
