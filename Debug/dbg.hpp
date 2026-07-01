@@ -344,37 +344,79 @@ template <typename Tuple, size_t I = 0> void _dbg_print_tuple(ostream &os, const
 }
 
 // ---------------------------------------------------------------
-// _dbg_print_2d_c_array_grid：二维 C 数组网格打印
+// _dbg_print_2d_c_array_grid：二维 C 数组网格打印（Unicode 边框）
 // ---------------------------------------------------------------
 template <typename T, size_t R, size_t C>
 void _dbg_print_2d_c_array_grid(ostream &os, const T (&arr)[R][C])
 {
+    // 计算各列最大宽度（+2 为两侧各一空格）
     int w = 1;
     for (size_t i = 0; i < R; ++i)
         for (size_t j = 0; j < C; ++j)
         {
             ostringstream ss;
             dbg_print(ss, arr[i][j]);
-            w = max(w, (int)ss.str().size() + 1);
+            w = max(w, (int)ss.str().size() + 2);
         }
-    int rw = max(2, (int)to_string(R - 1).size());
-    string indent(rw, ' ');
+    int rw = max(1, (int)to_string(R - 1).size());
+    int wr = rw + 2; // 行号列宽度（含两侧空格）
 
-    os << '\n' << indent;
-    for (size_t j = 0; j < C; ++j)
-        os << _dbg_c(RED) << setw(w) << j << _dbg_c(RESET);
+    // 重复一个 UTF-8 字符 n 次
+    auto rep = [](int n, const char *ch) {
+        string s;
+        for (int i = 0; i < n; ++i) s += ch;
+        return s;
+    };
+    string dash_c = rep(w,  "─");
+    string dash_r = rep(wr, "─");
+
+    // 画横线：left ─dash_r── mid_r ─dash_c─ mid_c ─dash_c─ right
+    auto hline = [&](const char *left, const char *mid_r, const char *mid_c, const char *right) {
+        os << left << dash_r << mid_r;
+        for (size_t j = 0; j < C; ++j)
+            os << dash_c << (j + 1 < C ? mid_c : right);
+    };
+
+    os << _dbg_c(RESET) << '\n';
+
+    // ── 顶边框 ──
+    hline("┌", "┬", "┬", "┐");
     os << '\n';
 
+    // ── 列号标尺（首格为空，对齐行号列宽度）──
+    os << "│" << string(wr, ' ') << "│";
+    for (size_t j = 0; j < C; ++j)
+    {
+        os << ' ' << _dbg_c(RED) << setw(w - 2) << j << _dbg_c(RESET) << ' ' << "│";
+    }
+    os << '\n';
+
+    // ── 表头/数据分隔线 ──
+    hline("├", "┼", "┼", "┤");
+    os << '\n';
+
+    // ── 数据行 ──
     for (size_t i = 0; i < R; ++i)
     {
-        os << _dbg_c(RED) << setw(rw) << i << _dbg_c(RESET);
+        os << "│" << ' ' << _dbg_c(RED) << setw(rw) << i << _dbg_c(RESET) << ' ' << "│";
         for (size_t j = 0; j < C; ++j)
         {
-            os << _dbg_c(CYAN) << setw(w);
-            dbg_print(os, arr[i][j]);
+            ostringstream ss;
+            dbg_print(ss, arr[i][j]);
+            os << ' ' << _dbg_c(CYAN) << setw(w - 2) << ss.str() << _dbg_c(RESET) << ' ' << "│";
         }
-        os << _dbg_c(RESET) << '\n';
+        os << '\n';
+
+        if (i + 1 < R)
+        {
+            hline("├", "┼", "┼", "┤");
+            os << '\n';
+        }
     }
+
+    // ── 底边框 ──
+    hline("└", "┴", "┴", "┘");
+    os << '\n';
 }
 
 // ---------------------------------------------------------------
@@ -766,28 +808,66 @@ template <typename T> void _dbg_print_grid(ostream &os, const vector<vector<T>> 
         {
             ostringstream ss;
             dbg_print(ss, mat[i][j]);
-            w = max(w, (int)ss.str().size() + 1);
+            w = max(w, (int)ss.str().size() + 2); // +2 为两侧各一空格
         }
-    int rw = max(2, (int)to_string(r2 - 1).size()); // 行号宽度
-    string indent(rw, ' ');                         // 列号标尺前的缩进
+    int rw = max(1, (int)to_string(r2 - 1).size());
+    int wr = rw + 2; // 行号列宽度（含两侧空格）
+    int cols = c2 - c1;
 
-    // 列号标尺（红色高亮）
-    os << indent;
-    for (int j = c1; j < c2; ++j)
-        os << _dbg_c(RED) << setw(w) << j << _dbg_c(RESET);
+    auto rep = [](int n, const char *ch) {
+        string s;
+        for (int i = 0; i < n; ++i) s += ch;
+        return s;
+    };
+    string dash_c = rep(w,  "─");
+    string dash_r = rep(wr, "─");
+
+    auto hline = [&](const char *left, const char *mid_r, const char *mid_c, const char *right) {
+        os << left << dash_r << mid_r;
+        for (int j = 0; j < cols; ++j)
+            os << dash_c << (j + 1 < cols ? mid_c : right);
+    };
+
+    os << _dbg_c(RESET) << '\n';
+
+    // ── 顶边框 ──
+    hline("┌", "┬", "┬", "┐");
     os << '\n';
 
-    // 逐行打印
+    // ── 列号标尺 ──
+    os << "│" << string(wr, ' ') << "│";
+    for (int j = c1; j < c2; ++j)
+    {
+        os << ' ' << _dbg_c(RED) << setw(w - 2) << j << _dbg_c(RESET) << ' ' << "│";
+    }
+    os << '\n';
+
+    // ── 表头/数据分隔线 ──
+    hline("├", "┼", "┼", "┤");
+    os << '\n';
+
+    // ── 数据行 ──
     for (int i = r1; i < r2; ++i)
     {
-        os << _dbg_c(RED) << setw(rw) << i << _dbg_c(RESET);
+        os << "│" << ' ' << _dbg_c(RED) << setw(rw) << i << _dbg_c(RESET) << ' ' << "│";
         for (int j = c1; j < c2; ++j)
         {
-            os << _dbg_c(CYAN) << setw(w);
-            dbg_print(os, mat[i][j]);
+            ostringstream ss;
+            dbg_print(ss, mat[i][j]);
+            os << ' ' << _dbg_c(CYAN) << setw(w - 2) << ss.str() << _dbg_c(RESET) << ' ' << "│";
         }
-        os << _dbg_c(RESET) << '\n';
+        os << '\n';
+
+        if (i + 1 < r2)
+        {
+            hline("├", "┼", "┼", "┤");
+            os << '\n';
+        }
     }
+
+    // ── 底边框 ──
+    hline("└", "┴", "┴", "┘");
+    os << '\n';
 }
 
 // ==================== 8. Timer + TIME ====================
