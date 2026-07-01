@@ -2,6 +2,7 @@
     "ACM Template": {
         "prefix": "acm",
         "body": [
+            "#include <bits/stdc++.h>",
             "/* ──▶  INCLUDE  ◀── */",
             "$1#define MULTIT",
             "#include <ihxnan>",
