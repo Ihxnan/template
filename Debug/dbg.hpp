@@ -292,6 +292,10 @@ template <typename T> constexpr bool is_tuple_v = is_specialization_of<T, tuple>
 template <typename T> constexpr bool is_optional_v = is_specialization_of<T, optional>::value;
 template <typename T> constexpr bool is_variant_v = is_specialization_of<T, variant>::value;
 template <typename T> constexpr bool is_bitset_v = is_specialization_of_nontype<T, bitset>::value;
+// std::array<T,N> 检测
+template <typename T> struct _dbg_is_std_array : false_type {};
+template <typename T, size_t N> struct _dbg_is_std_array<array<T, N>> : true_type {};
+template <typename T> constexpr bool _dbg_is_std_array_v = _dbg_is_std_array<T>::value;
 template <typename T> constexpr bool is_map_v = has_mapped_v<T>;
 template <typename T> constexpr bool is_set_v = has_key_v<T> && !is_map_v<T>;
 template <typename T> constexpr bool is_container_adaptor_v = has_pop_v<T> && !has_begin_v<T>;
@@ -420,6 +424,54 @@ void _dbg_print_2d_c_array_grid(ostream &os, const T (&arr)[R][C])
 }
 
 // ---------------------------------------------------------------
+// _dbg_print_1d_table：一维简单数组的单行表格（列号标尺 + 数据）
+// ---------------------------------------------------------------
+template <typename Fn>
+void _dbg_print_1d_table(ostream &os, size_t N, Fn &&get_val)
+{
+    int w = 1;
+    for (size_t i = 0; i < N; ++i)
+    {
+        ostringstream ss;
+        dbg_print(ss, get_val(i));
+        w = max(w, (int)ss.str().size() + 2);
+    }
+    string dash;
+    for (int i = 0; i < w; ++i) dash += "─";
+
+    os << _dbg_c(RESET) << '\n';
+
+    os << "┌";
+    for (size_t i = 0; i < N; ++i)
+        os << dash << (i + 1 < N ? "┬" : "┐");
+    os << '\n';
+
+    os << "│";
+    for (size_t i = 0; i < N; ++i)
+        os << ' ' << _dbg_c(RED) << setw(w - 2) << i << _dbg_c(RESET) << ' ' << "│";
+    os << '\n';
+
+    os << "├";
+    for (size_t i = 0; i < N; ++i)
+        os << dash << (i + 1 < N ? "┼" : "┤");
+    os << '\n';
+
+    os << "│";
+    for (size_t i = 0; i < N; ++i)
+    {
+        ostringstream ss;
+        dbg_print(ss, get_val(i));
+        os << ' ' << _dbg_c(CYAN) << setw(w - 2) << ss.str() << _dbg_c(RESET) << ' ' << "│";
+    }
+    os << '\n';
+
+    os << "└";
+    for (size_t i = 0; i < N; ++i)
+        os << dash << (i + 1 < N ? "┴" : "┘");
+    os << '\n';
+}
+
+// ---------------------------------------------------------------
 // dbg_print C 数组重载：通过引用保留大小信息
 // ---------------------------------------------------------------
 template <typename T, size_t N>
@@ -449,8 +501,14 @@ ostream &dbg_print(ostream &os, const T (&arr)[N], int depth = 0)
         }
         // 元素是结构体 → 走通用递归逻辑
     }
+    else if constexpr (!is_structured_v<T>)
+    {
+        // 一维简单数组 → 列号标尺 + 数据行 表格
+        _dbg_print_1d_table(os, N, [&](size_t i) -> const T& { return arr[i]; });
+        return os;
+    }
 
-    // 通用数组逻辑：一维 / 高维但元素是结构体
+    // 通用数组逻辑：一维结构体元素 / 高维但元素是结构体
     bool multiline = false;
     if (N > 0)
     {
@@ -637,6 +695,12 @@ template <typename T> ostream &dbg_print(ostream &os, const T &x, int depth /* =
                     _dbg_print_2d(os, x);
                     return os;
                 }
+            }
+            else if constexpr ((is_specialization_of<T, vector>::value || _dbg_is_std_array_v<T>) && !is_structured_v<Elem>)
+            {
+                // 1D vector<简单类型> → 列号标尺 + 数据行表格
+                _dbg_print_1d_table(os, x.size(), [&](size_t i) -> decltype(auto) { return x[i]; });
+                return os;
             }
         }
 
