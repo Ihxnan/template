@@ -298,14 +298,21 @@ template <typename T> constexpr bool is_container_adaptor_v = has_pop_v<T> && !h
 template <typename T> constexpr bool is_iterable_v = has_begin_v<T> && has_end_v<T>;
 template <typename T> constexpr bool is_streamable_v = is_output_v<T>;
 
+// C 数组检测（编译期已知大小）
+template <typename T> struct _dbg_is_c_array : false_type {};
+template <typename T, size_t N> struct _dbg_is_c_array<T[N]> : true_type {};
+template <typename T> constexpr bool _dbg_is_c_array_v = _dbg_is_c_array<T>::value;
+
 // is_structured_v：元素是否为结构体/容器，用于深度 0 时判断父容器是否需要多行缩进
 template <typename T>
 constexpr bool is_structured_v = is_iterable_v<T> || is_map_v<T> || is_set_v<T> || is_container_adaptor_v<T> ||
-                                 is_pair_v<T> || is_tuple_v<T> || is_optional_v<T> || is_variant_v<T> || is_bitset_v<T>;
+                                 is_pair_v<T> || is_tuple_v<T> || is_optional_v<T> || is_variant_v<T> || is_bitset_v<T> ||
+                                 _dbg_is_c_array_v<T>;
 
 // is_expandable_v：深度 >=1 时，仅对"可展开"容器（有多元素的）继续多行，pair/tuple 等保持紧凑
 template <typename T>
-constexpr bool is_expandable_v = is_iterable_v<T> || is_map_v<T> || is_set_v<T> || is_container_adaptor_v<T>;
+constexpr bool is_expandable_v = is_iterable_v<T> || is_map_v<T> || is_set_v<T> || is_container_adaptor_v<T> ||
+                                 _dbg_is_c_array_v<T>;
 
 // ==================== 3. tuple 展开辅助 ====================
 
@@ -334,6 +341,97 @@ template <typename Tuple, size_t I = 0> void _dbg_print_tuple(ostream &os, const
         dbg_print(os, get<I>(t), depth + 1);
         _dbg_print_tuple<Tuple, I + 1>(os, t, depth);
     }
+}
+
+// ---------------------------------------------------------------
+// _dbg_print_2d_c_array_grid：二维 C 数组网格打印
+// ---------------------------------------------------------------
+template <typename T, size_t R, size_t C>
+void _dbg_print_2d_c_array_grid(ostream &os, const T (&arr)[R][C])
+{
+    int w = 1;
+    for (size_t i = 0; i < R; ++i)
+        for (size_t j = 0; j < C; ++j)
+        {
+            ostringstream ss;
+            dbg_print(ss, arr[i][j]);
+            w = max(w, (int)ss.str().size() + 1);
+        }
+    int rw = max(2, (int)to_string(R - 1).size());
+    string indent(rw, ' ');
+
+    os << '\n' << indent;
+    for (size_t j = 0; j < C; ++j)
+        os << _dbg_c(RED) << setw(w) << j << _dbg_c(RESET);
+    os << '\n';
+
+    for (size_t i = 0; i < R; ++i)
+    {
+        os << _dbg_c(RED) << setw(rw) << i << _dbg_c(RESET);
+        for (size_t j = 0; j < C; ++j)
+        {
+            os << _dbg_c(CYAN) << setw(w);
+            dbg_print(os, arr[i][j]);
+        }
+        os << _dbg_c(RESET) << '\n';
+    }
+}
+
+// ---------------------------------------------------------------
+// dbg_print C 数组重载：通过引用保留大小信息
+// ---------------------------------------------------------------
+template <typename T, size_t N>
+ostream &dbg_print(ostream &os, const T (&arr)[N], int depth = 0)
+{
+    if constexpr (is_same_v<T, char>)
+    {
+        os << '"';
+        for (size_t i = 0; i < N && arr[i]; ++i)
+            os << arr[i];
+        os << '"';
+        return os;
+    }
+    else if constexpr (_dbg_is_c_array_v<T>)
+    {
+        // T 本身是数组 → 至少是二维
+        // 检查最内层元素是否是简单类型
+        using Innermost = remove_all_extents_t<T>;
+        if constexpr (!is_structured_v<Innermost>)
+        {
+            // 二维简单数组 → 网格格式
+            using Inner = remove_extent_t<T>;
+            constexpr size_t COLS = extent_v<T, 0>;
+            _dbg_print_2d_c_array_grid(os,
+                reinterpret_cast<const Inner (&)[N][COLS]>(arr));
+            return os;
+        }
+        // 元素是结构体 → 走通用递归逻辑
+    }
+
+    // 通用数组逻辑：一维 / 高维但元素是结构体
+    bool multiline = false;
+    if (N > 0)
+    {
+        if (depth == 0)
+            multiline = is_structured_v<T>;
+        else
+            multiline = is_expandable_v<T>;
+    }
+    string indent(depth * DBG_INDENT, ' ');
+
+    os << '[';
+    for (size_t i = 0; i < N; ++i)
+    {
+        if (i > 0)
+            os << (multiline ? "," : ", ");
+        if (multiline)
+            os << '\n' << indent << string(DBG_INDENT, ' ');
+        dbg_print(os, arr[i], depth + 1);
+    }
+    if (multiline)
+        os << '\n' << indent;
+    os << ']';
+    return os;
 }
 
 // ==================== 4. 统一打印引擎 dbg_print ====================
