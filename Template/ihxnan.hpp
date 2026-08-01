@@ -17,7 +17,7 @@
     #define gc() (p1==p2&&(p2=(p1=buf)+fread(buf,1,S,stdin),p1==p2)?EOF:*p1++)
     #define pc(c) (Top==S&&(clear(),0), buf[Top++]=c)
 #endif
-using namespace std;using ll = long long;using ul = unsigned long long;using lll = __int128;using vb = vector<bool>;using vi = vector<int>;using vvi = vector<vi>;using vl = vector<ll>;using vvl = vector<vl>;using pii = pair<int, int>;using pll = pair<ll, ll>;using ti = tuple<int, int, int>;
+using namespace std;using ll = long long;using ul = unsigned long long;using lll = __int128;using vb = vector<bool>;using vi = vector<int>;using vvi = vector<vi>;using vl = vector<ll>;using vvl = vector<vl>;using pii = pair<int, int>;using pll = pair<ll, ll>;using ti = tuple<int, int, int>;using tl = tuple<ll, ll, ll>;
 struct IO{
 #define cin fin
 #define cout fout

@@ -1,5 +1,5 @@
-vector<int> prime;
-vector<bool> is_prime;
+vi prime;
+vb is_prime;
 
 void euler_prime(int n)
 {

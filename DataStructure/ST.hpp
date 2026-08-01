@@ -1,22 +1,22 @@
 struct ST
 {
     const int n, len;
-    vector<int> in;
-    vector<vector<int>> st;
+    vi in;
+    vvi st;
     function<int(int, int)> Max;
 
     ST(
         int n, function<int(int, int)> Max = [](int a, int b) { return max(a, b); })
         : n(n), len(__lg(n) + 1), in(n + 1), Max(Max)
     {
-        st.resize(len, vector<int>(n + 1));
+        st.resize(len, vi(n + 1));
     }
 
     ST(
-        vector<int> &arr, function<int(int, int)> Max = [](int a, int b) { return max(a, b); })
+        vi &arr, function<int(int, int)> Max = [](int a, int b) { return max(a, b); })
         : n(arr.size() - 1), len(__lg(n) + 1), in(arr), Max(Max)
     {
-        st.resize(len, vector<int>(n + 1));
+        st.resize(len, vi(n + 1));
     }
 
     void init()

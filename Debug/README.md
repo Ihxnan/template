@@ -54,7 +54,7 @@ gdb(n, m);
 ### 顺序容器
 
 ```cpp
-vector<int> v = {1, 2, 3};
+vi v = {1, 2, 3};
 gdb(v);          // [main.cpp:42]
 // v = [1, 2, 3]
 
@@ -134,7 +134,7 @@ gdb(big);        // [main.cpp:42]
 > `vector<vector<T>>` 自动以网格格式输出（行列号红色高亮），其余嵌套容器多行缩进。
 
 ```cpp
-vector<vector<int>> dp = {{1, 0}, {0, 1}};
+vvi dp = {{1, 0}, {0, 1}};
 gdb(dp);
 // dp = 
 //        0     1

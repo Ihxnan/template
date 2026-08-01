@@ -1,10 +1,10 @@
 struct Trie
 {
     int tot;
-    vector<int> pass, end;
-    vector<vector<int>> trie;
+    vi pass, end;
+    vvi trie;
 
-    int getNum(const char &x)
+    int get(const char &x)
     {
         if (x >= 'A' && x <= 'Z')
             return x - 'A';
@@ -13,7 +13,7 @@ struct Trie
         return x - '0' + 52;
     }
 
-    Trie(int n) : tot(0), pass(n + 5), end(n + 5), trie(n + 5, vector<int>(62))
+    Trie(int n) : tot(0), pass(n + 5), end(n + 5), trie(n + 5, vi(62))
     {
     }
 
@@ -23,7 +23,7 @@ struct Trie
         ++pass[cur];
         for (auto &p : str)
         {
-            int x = getNum(p);
+            int x = get(p);
             if (!trie[cur][x])
                 trie[cur][x] = ++tot;
             cur = trie[cur][x];
@@ -37,7 +37,7 @@ struct Trie
         int cur = 0;
         for (auto &p : str)
         {
-            int x = getNum(p);
+            int x = get(p);
             if (!trie[cur][x])
                 return 0;
             cur = trie[cur][x];
@@ -50,7 +50,7 @@ struct Trie
         int cur = 0;
         for (auto &p : str)
         {
-            int x = getNum(p);
+            int x = get(p);
             if (!trie[cur][x])
                 return 0;
             cur = trie[cur][x];
@@ -66,7 +66,7 @@ struct Trie
             --pass[cur];
             for (auto &p : str)
             {
-                int x = getNum(p);
+                int x = get(p);
                 if (!--pass[trie[cur][x]])
                 {
                     trie[cur][x] = 0;

@@ -7,6 +7,7 @@
 
 using namespace std;
 using ll = long long;
+using vi = vector<int>;
 
 class Generator
 {
@@ -42,7 +43,7 @@ class Generator
 
     void permutation(int n)
     {
-        vector<int> res(n);
+        vi res(n);
         iota(res.begin(), res.end(), 1);
         shuffle(res.begin(), res.end(), gen);
         for (auto &p : res)

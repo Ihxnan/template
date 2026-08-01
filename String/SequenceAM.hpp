@@ -1,7 +1,7 @@
 struct SqAM
 {
     int n;
-    vector<vector<int>> next;
+    vvi next;
     SqAM() = default;
     SqAM(const string &str)
     {
@@ -14,7 +14,7 @@ struct SqAM
     void init(const string &str)
     {
         n = str.size();
-        next.resize(n + 1, vector<int>(26, -1));
+        next.resize(n + 1, vi(26, -1));
         for (int i = n - 1; i >= 0; --i)
         {
             for (int j = 0; j < 26; ++j)

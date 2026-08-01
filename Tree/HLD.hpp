@@ -98,9 +98,9 @@ template <class T> struct HLD
 {
     int n, dn;
     vector<T> in;
-    vector<vector<int>> tree;
-    vector<int> sz, dep, son, parent;
-    vector<int> top, dfn;
+    vvi tree;
+    vi sz, dep, son, parent;
+    vi top, dfn;
     vector<T> rk;
     SegmentTree<T> segtree;
 

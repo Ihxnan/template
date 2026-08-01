@@ -1,8 +1,8 @@
-vector<int> A{2, 3, 5, 7, 11, 13, 17, 19, 23};
+vi Bases{2, 3, 5, 7, 11, 13, 17, 19, 23};
 
 ll mul(ll a, ll b, ll m)
 {
-    return __int128(a) * b % m;
+    return lll(a) * b % m;
 }
 
 ll qmi(ll a, ll b, ll mod)
@@ -20,7 +20,7 @@ bool is_prime(ll n)
         return false;
     int s = __builtin_ctzll(n - 1);
     ll d = (n - 1) >> s;
-    for (auto &p : A)
+    for (auto &p : Bases)
     {
         if (p == n)
             return true;

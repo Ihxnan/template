@@ -9,7 +9,7 @@
 //                           // n = 5, m = 10
 //
 // --- 顺序容器 ---
-//   vector<int> v = {1, 2, 3};
+//   vi v = {1, 2, 3};
 //   gdb(v);                 // [main.cpp:42]
 //                           // v = [1, 2, 3]
 //
@@ -73,7 +73,7 @@
 //                           // big = 1000000000000000000000000000
 //
 // --- 嵌套容器（元素为容器时自动多行缩进）---
-//   vector<vector<int>> dp = {{1, 0}, {0, 1}};
+//   vvi dp = {{1, 0}, {0, 1}};
 //   gdb(dp);                // [main.cpp:42]
 //                           // dp =
 //                           //        0     1
@@ -362,6 +362,8 @@ void _dbg_print_2d_c_array_grid(ostream &os, const T (&arr)[R][C])
             dbg_print(ss, arr[i][j]);
             w = max(w, (int)ss.str().size() + 2);
         }
+    // 列标（列号）可能比数据更宽，将其纳入单元格宽度
+    w = max(w, (C ? (int)to_string(C - 1).size() : 1) + 2);
     int rw = max(1, (int)to_string(R - 1).size());
     int wr = rw + 2; // 行号列宽度（含两侧空格）
 
@@ -436,6 +438,8 @@ void _dbg_print_1d_table(ostream &os, size_t N, Fn &&get_val)
         dbg_print(ss, get_val(i));
         w = max(w, (int)ss.str().size() + 2);
     }
+    // 列标（列号）可能比数据更宽，将其纳入单元格宽度
+    w = max(w, (N ? (int)to_string(N - 1).size() : 1) + 2);
     string dash;
     for (int i = 0; i < w; ++i) dash += "─";
 
@@ -865,15 +869,20 @@ struct DbgStream
 
 template <typename T> void _dbg_print_grid(ostream &os, const vector<vector<T>> &mat, int r1, int r2, int c1, int c2)
 {
-    // 第一遍：扫描所有元素，计算最大显示宽度
+    // 第一遍：扫描所有元素，计算最大显示宽度（跳过短行不存在的元素）
     int w = 1;
     for (int i = r1; i < r2; ++i)
-        for (int j = c1; j < c2; ++j)
+    {
+        int row_cols = (int)mat[i].size();
+        for (int j = c1; j < c2 && j < row_cols; ++j)
         {
             ostringstream ss;
             dbg_print(ss, mat[i][j]);
             w = max(w, (int)ss.str().size() + 2); // +2 为两侧各一空格
         }
+    }
+    // 列标（列号）可能比数据更宽，将其纳入单元格宽度
+    w = max(w, (c2 > c1 ? (int)to_string(c2 - 1).size() : 1) + 2);
     int rw = max(1, (int)to_string(r2 - 1).size());
     int wr = rw + 2; // 行号列宽度（含两侧空格）
     int cols = c2 - c1;
@@ -890,6 +899,17 @@ template <typename T> void _dbg_print_grid(ostream &os, const vector<vector<T>> 
         os << left << dash_r << mid_r;
         for (int j = 0; j < cols; ++j)
             os << dash_c << (j + 1 < cols ? mid_c : right);
+    };
+
+    // 安全获取 mat[i][j]，越界时返回空字符串
+    auto safe_cell = [&](int i, int j) -> string {
+        if (i < (int)mat.size() && j < (int)mat[i].size())
+        {
+            ostringstream ss;
+            dbg_print(ss, mat[i][j]);
+            return ss.str();
+        }
+        return "";
     };
 
     os << _dbg_c(RESET) << '\n';
@@ -916,9 +936,8 @@ template <typename T> void _dbg_print_grid(ostream &os, const vector<vector<T>> 
         os << "│" << ' ' << _dbg_c(RED) << setw(rw) << i << _dbg_c(RESET) << ' ' << "│";
         for (int j = c1; j < c2; ++j)
         {
-            ostringstream ss;
-            dbg_print(ss, mat[i][j]);
-            os << ' ' << _dbg_c(CYAN) << setw(w - 2) << ss.str() << _dbg_c(RESET) << ' ' << "│";
+            string val = safe_cell(i, j);
+            os << ' ' << _dbg_c(CYAN) << setw(w - 2) << val << _dbg_c(RESET) << ' ' << "│";
         }
         os << '\n';
 

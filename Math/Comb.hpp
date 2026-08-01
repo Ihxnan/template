@@ -1,6 +1,5 @@
 struct Comb
 {
-    using ll = long long;
     int n;
     ll mod;
     vector<ll> _fac, _inv;
@@ -39,7 +38,12 @@ struct Comb
         return _fac[x];
     }
 
-    ll inv(int x)
+    ll inv(ll x)
+    {
+        return qmi(x, mod - 2);
+    }
+
+    ll ifac(int x)
     {
         if (x > n)
             init(x);
@@ -50,13 +54,13 @@ struct Comb
     {
         if (x < 0 || y < 0 || x < y)
             return 0;
-        return fac(x) * inv(y) % mod * inv(x - y) % mod;
+        return fac(x) * ifac(y) % mod * ifac(x - y) % mod;
     }
 
     ll P(int x, int y)
     {
         if (x < 0 || y < 0 || x < y)
             return 0;
-        return fac(x) * inv(x - y) % mod;
+        return fac(x) * ifac(x - y) % mod;
     }
-} comb;
+};
