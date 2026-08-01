@@ -23,7 +23,7 @@ template <class T> struct MinCostFlow
     int n;
     vector<_Edge> e;
     vvi g;
-    vector<T> h, dis;
+    vector<T> dis;
     vi pre;
 
     MinCostFlow()
@@ -49,30 +49,34 @@ template <class T> struct MinCostFlow
         e.emplace_back(u, 0, -cost);
     }
 
-    bool dijkstra(int s, int t)
+    bool spfa(int s, int t)
     {
         dis.assign(n, numeric_limits<T>::max());
         pre.assign(n, -1);
-        priority_queue<pair<T, int>, vector<pair<T, int>>, greater<pair<T, int>>> que;
+        vb inq(n, false);
+        queue<int> que;
         dis[s] = 0;
-        que.emplace(0, s);
+        que.push(s);
+        inq[s] = true;
         while (!que.empty())
         {
-            T d = que.top().first;
-            int u = que.top().second;
+            int u = que.front();
             que.pop();
-            if (dis[u] != d)
-                continue;
+            inq[u] = false;
             for (int i : g[u])
             {
                 int v = e[i].to;
                 T cap = e[i].cap;
                 T cost = e[i].cost;
-                if (cap > 0 && dis[v] > d + h[u] - h[v] + cost)
+                if (cap > 0 && dis[v] > dis[u] + cost)
                 {
-                    dis[v] = d + h[u] - h[v] + cost;
+                    dis[v] = dis[u] + cost;
                     pre[v] = i;
-                    que.emplace(dis[v], v);
+                    if (!inq[v])
+                    {
+                        inq[v] = true;
+                        que.push(v);
+                    }
                 }
             }
         }
@@ -83,11 +87,8 @@ template <class T> struct MinCostFlow
     {
         T flow = 0;
         T cost = 0;
-        h.assign(n, 0);
-        while (dijkstra(s, t))
+        while (spfa(s, t))
         {
-            for (int i = 0; i < n; ++i)
-                h[i] += dis[i];
             T aug = numeric_limits<T>::max();
             for (int i = t; i != s; i = e[pre[i] ^ 1].to)
                 aug = min(aug, e[pre[i]].cap);
@@ -97,7 +98,7 @@ template <class T> struct MinCostFlow
                 e[pre[i] ^ 1].cap += aug;
             }
             flow += aug;
-            cost += aug * h[t];
+            cost += aug * dis[t];
         }
         return make_pair(flow, cost);
     }

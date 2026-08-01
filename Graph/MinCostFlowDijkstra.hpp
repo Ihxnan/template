@@ -1,4 +1,4 @@
-template <class T> struct MaxCostFlow
+template <class T> struct MinCostFlowDijkstra
 {
     struct _Edge
     {
@@ -23,14 +23,14 @@ template <class T> struct MaxCostFlow
     int n;
     vector<_Edge> e;
     vvi g;
-    vector<T> dis;
+    vector<T> h, dis;
     vi pre;
 
-    MaxCostFlow()
+    MinCostFlowDijkstra()
     {
     }
 
-    MaxCostFlow(int n_) : n(n_), g(n_)
+    MinCostFlowDijkstra(int n_) : n(n_), g(n_)
     {
     }
 
@@ -49,46 +49,45 @@ template <class T> struct MaxCostFlow
         e.emplace_back(u, 0, -cost);
     }
 
-    bool spfa(int s, int t)
+    bool dijkstra(int s, int t)
     {
-        dis.assign(n, -numeric_limits<T>::max());
+        dis.assign(n, numeric_limits<T>::max());
         pre.assign(n, -1);
-        vector<bool> inq(n, false);
-        queue<int> que;
+        priority_queue<pair<T, int>, vector<pair<T, int>>, greater<pair<T, int>>> que;
         dis[s] = 0;
-        que.push(s);
-        inq[s] = true;
+        que.emplace(0, s);
         while (!que.empty())
         {
-            int u = que.front();
+            T d = que.top().first;
+            int u = que.top().second;
             que.pop();
-            inq[u] = false;
+            if (dis[u] != d)
+                continue;
             for (int i : g[u])
             {
                 int v = e[i].to;
                 T cap = e[i].cap;
                 T cost = e[i].cost;
-                if (cap > 0 && dis[v] < dis[u] + cost)
+                if (cap > 0 && dis[v] > d + h[u] - h[v] + cost)
                 {
-                    dis[v] = dis[u] + cost;
+                    dis[v] = d + h[u] - h[v] + cost;
                     pre[v] = i;
-                    if (!inq[v])
-                    {
-                        inq[v] = true;
-                        que.push(v);
-                    }
+                    que.emplace(dis[v], v);
                 }
             }
         }
-        return dis[t] != -numeric_limits<T>::max();
+        return dis[t] != numeric_limits<T>::max();
     }
 
     pair<T, T> flow(int s, int t)
     {
         T flow = 0;
         T cost = 0;
-        while (spfa(s, t))
+        h.assign(n, 0);
+        while (dijkstra(s, t))
         {
+            for (int i = 0; i < n; ++i)
+                h[i] += dis[i];
             T aug = numeric_limits<T>::max();
             for (int i = t; i != s; i = e[pre[i] ^ 1].to)
                 aug = min(aug, e[pre[i]].cap);
@@ -98,7 +97,7 @@ template <class T> struct MaxCostFlow
                 e[pre[i] ^ 1].cap += aug;
             }
             flow += aug;
-            cost += aug * dis[t];
+            cost += aug * h[t];
         }
         return make_pair(flow, cost);
     }
