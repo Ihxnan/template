@@ -61,7 +61,8 @@ vl factorize(ll n)
             factors.push_back(n);
             return;
         }
-        auto rho_func = [&](ll x) { return (mul(x, x, n) + 1) % n; };
+        ll c = 1;
+        auto rho_func = [&](ll x) { return (mul(x, x, n) + c) % n; };
         ll x0 = 2;
         while (true)
         {
@@ -96,6 +97,7 @@ vl factorize(ll n)
                 return;
             }
             ++x0;
+            ++c;
         }
     };
     dfs(dfs, n);

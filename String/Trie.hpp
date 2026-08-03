@@ -6,10 +6,10 @@ struct Trie
 
     int get(const char &x)
     {
-        if (x >= 'A' && x <= 'Z')
-            return x - 'A';
         if (x >= 'a' && x <= 'z')
-            return x - 'a' + 26;
+            return x - 'a';
+        if (x >= 'A' && x <= 'Z')
+            return x - 'A' + 26;
         return x - '0' + 52;
     }
 
